@@ -1,0 +1,54 @@
+- hosts: raspi
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt: update_cache=yes
+
+    - name: Install motion requirements
+      apt: 
+        pkg: ['ffmpeg', 'v4l-utils', 'libmariadbclient18', 'libpq5'] 
+        state: latest
+
+    - name: Download motion .deb file
+      get_url: 
+        url: https://github.com/Motion-Project/motion/releases/download/release-4.2.2/pi_stretch_motion_4.2.2-1_armhf.deb
+        dest: /tmp/pi_stretch_motion.deb
+
+    - name: Install motion from .deb file
+      apt:
+        deb: /tmp/pi_stretch_motion.deb
+
+    - name: Install motioneye/pip requirements.
+      apt:
+        pkg: ['python-pip', 'python-dev', 'libssl-dev', 'libcurl4-openssl-dev', 'libjpeg-dev', 'libz-dev']
+        state: latest
+
+    - name: Install motioneye via pip
+      pip: 
+        name: motioneye
+
+    - name: Create /etc/motioneye
+      file: 
+        path: /etc/motioneye
+        state: directory
+
+    - name: Copy motioneye config
+      copy:
+        src: /usr/local/share/motioneye/extra/motioneye.conf.sample
+        dest: /etc/motioneye/motioneye.conf
+        remote_src: yes
+
+    - name: Create /var/lib/motioneye
+      file:
+        path: /var/lib/motioneye
+        state: directory
+
+    - name: Copy systemd configuration
+      copy:
+        src: /usr/local/share/motioneye/extra/motioneye.systemd-unit-local
+        dest: /etc/systemd/system/motioneye.service
+        remote_src: yes
+
+    - name: Reload systemd with new motioneye config
+      systemd:
+        daemon_reload: yes
